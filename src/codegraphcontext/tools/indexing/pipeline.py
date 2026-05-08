@@ -86,13 +86,13 @@ async def run_tree_sitter_index_async(
     t1 = time.time()
     info_logger(f"Inheritance links created in {t1 - t0:.1f}s. Starting function calls...")
 
-    groups = build_function_call_groups(
+    resolved_calls = build_function_call_groups(
         all_file_data,
         imports_map,
         None,
         diagnostics=call_resolution_diagnostics,
     )
-    writer.write_function_call_groups(*groups)
+    writer.write_function_call_groups(resolved_calls)
     t2 = time.time()
     info_logger(f"Function calls created in {t2 - t1:.1f}s. Total post-processing: {t2 - t0:.1f}s")
 

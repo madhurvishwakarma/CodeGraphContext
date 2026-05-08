@@ -1331,22 +1331,19 @@ def build_function_call_groups(
     imports_map: dict,
     file_class_lookup: Optional[Dict[str, set]] = None,
     diagnostics: Optional[List[Dict[str, Any]]] = None,
-) -> Tuple[
-    List[Dict],
-    List[Dict],
-    List[Dict],
-    List[Dict],
-    List[Dict],
-    List[Dict],
-]:
-    """Phase 1 of CALLS linking: resolve and bucket by (caller_label, called_label) pair."""
+) -> List[Dict[str, Any]]:
+    """Resolve all function calls and return a single flat list for label-agnostic writing."""
     skip_external = (get_config_value("SKIP_EXTERNAL_RESOLUTION") or "false").lower() == "true"
 
     if file_class_lookup is None:
         file_class_lookup = {}
     for fd in all_file_data:
         fp = str(Path(fd["path"]).resolve())
-        file_class_lookup[fp] = {c["name"] for c in fd.get("classes", [])}
+        # Aggregate all possible call targets: Classes, Interfaces, Traits, Structs, Enums, Records, Unions
+        targets = {c["name"] for c in fd.get("classes", [])}
+        for label in ["interfaces", "traits", "structs", "enums", "records", "unions"]:
+            targets.update({i["name"] for i in fd.get(label, [])})
+        file_class_lookup[fp] = targets
 
     type_aliases: Dict[str, str] = {}
     for fd in all_file_data:
@@ -1688,22 +1685,13 @@ def build_function_call_groups(
                         member_property_types[(context_name, variable["name"])] = property_type_key
 
     info_logger(f"[CALLS] Resolving function calls across {len(all_file_data)} files...")
-    fn_to_fn: List[Dict] = []
-    fn_to_cls: List[Dict] = []
-    cls_to_fn: List[Dict] = []
-    cls_to_cls: List[Dict] = []
-    file_to_fn: List[Dict] = []
-    file_to_cls: List[Dict] = []
+    resolved_calls: List[Dict] = []
 
     # Pre-build per-language-extension filtered imports_map views.
-    # When a caller is Java, we only want to resolve against Java files —
-    # this prevents false-positive CALLS edges from names that coincidentally
-    # exist in another language's file (e.g. Java `add()` -> JS `add`).
     _lang_imports_cache: Dict[str, dict] = {}
 
     def _get_lang_imports(caller_lang: str) -> dict:
         if caller_lang not in _lang_imports_cache:
-            # Map language name to typical file extensions
             _LANG_EXTS: Dict[str, set] = {
                 "java":       {".java"},
                 "python":     {".py", ".ipynb"},
@@ -1729,7 +1717,6 @@ def build_function_call_groups(
             }
             exts = _LANG_EXTS.get(caller_lang)
             if not exts:
-                # Unknown language — use full imports_map unchanged
                 _lang_imports_cache[caller_lang] = imports_map
             else:
                 filtered: dict = {}
@@ -1738,7 +1725,6 @@ def build_function_call_groups(
                     if same_lang:
                         filtered[name] = same_lang
                     elif paths:
-                        # Keep non-file entries (e.g. package names with no extension)
                         if not any(Path(p).suffix for p in paths):
                             filtered[name] = paths
                 _lang_imports_cache[caller_lang] = filtered
@@ -1755,6 +1741,10 @@ def build_function_call_groups(
         )
         _fn_starts = [f["line_number"] for f in _file_functions_sorted]
         _fn_ends   = [f["end_line"]   for f in _file_functions_sorted]
+        # Include other potential callers (methods in traits, interfaces, etc.)
+        for label in ["interfaces", "traits", "structs", "records", "unions"]:
+            class_names.update({i["name"] for i in file_data.get(label, [])})
+            
         local_names = func_names | class_names
         local_class_bases = {
             c["name"]: c.get("bases", []) for c in file_data.get("classes", [])
@@ -2382,54 +2372,10 @@ def build_function_call_groups(
             )
             if not resolved:
                 continue
-
-            called_path = resolved.get("called_file_path", "")
-            called_name = resolved["called_name"]
-            class_names_for_path = file_class_lookup.get(called_path, set())
-            simple_called_name = simple_type_key(called_name)
-            called_is_class = (
-                called_name in class_names_for_path
-                or (
-                    simple_called_name is not None
-                    and simple_called_name in class_names_for_path
-                )
-            )
-            if called_is_class and called_name not in class_names_for_path and simple_called_name:
-                resolved = {**resolved, "called_name": simple_called_name}
-                called_name = simple_called_name
-
-            if resolved["type"] == "file":
-                if called_is_class:
-                    file_to_cls.append(resolved)
-                else:
-                    file_to_fn.append(resolved)
-            else:
-                caller_name = resolved["caller_name"]
-                caller_is_class = caller_name in class_names
-                if caller_is_class:
-                    (cls_to_cls if called_is_class else cls_to_fn).append(resolved)
-                else:
-                    (fn_to_cls if called_is_class else fn_to_fn).append(resolved)
+            resolved_calls.append(resolved)
 
         if (idx + 1) % 1000 == 0:
-            total = len(fn_to_fn) + len(fn_to_cls) + len(cls_to_fn) + len(cls_to_cls)
-            file_total = len(file_to_fn) + len(file_to_cls)
-            info_logger(
-                f"[CALLS] Resolved {idx + 1}/{len(all_file_data)} files... "
-                f"({total} fn/cls calls, {file_total} file calls)"
-            )
+            info_logger(f"[CALLS] Resolved {idx + 1}/{len(all_file_data)} files... ({len(resolved_calls)} calls)")
 
-    total_all = (
-        len(fn_to_fn)
-        + len(fn_to_cls)
-        + len(cls_to_fn)
-        + len(cls_to_cls)
-        + len(file_to_fn)
-        + len(file_to_cls)
-    )
-    info_logger(
-        f"[CALLS] Resolution complete: fn→fn={len(fn_to_fn)}, fn→cls={len(fn_to_cls)}, "
-        f"cls→fn={len(cls_to_fn)}, cls→cls={len(cls_to_cls)}, "
-        f"file→fn={len(file_to_fn)}, file→cls={len(file_to_cls)}. Total={total_all}"
-    )
-    return fn_to_fn, fn_to_cls, cls_to_fn, cls_to_cls, file_to_fn, file_to_cls
+    info_logger(f"[CALLS] Resolution complete: {len(resolved_calls)} total CALLS edges identified.")
+    return resolved_calls

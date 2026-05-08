@@ -957,15 +957,21 @@ class GraphBuilder:
             if scip_enabled:
                 from .scip_indexer import detect_project_lang, is_scip_available
 
-                scip_langs_str = get_config_value("SCIP_LANGUAGES") or "python,typescript,javascript,go,rust,java,dart,cpp,c,csharp"
+                scip_langs_str = get_config_value("SCIP_LANGUAGES") or "python,typescript,javascript,go,rust,java,dart,cpp,c,csharp,php,ruby,kotlin,swift,elixir"
                 scip_languages = [l.strip() for l in scip_langs_str.split(",") if l.strip()]
                 detected_lang = detect_project_lang(path, scip_languages)
 
                 if detected_lang and is_scip_available(detected_lang):
                     info_logger(f"SCIP_INDEXER=true — using SCIP for language: {detected_lang}")
-                    await self._build_graph_from_scip(path, is_dependency, job_id, detected_lang)
-                    return
-                if detected_lang:
+                    try:
+                        await self._build_graph_from_scip(path, is_dependency, job_id, detected_lang)
+                        return
+                    except Exception as e:
+                        warning_logger(
+                            f"SCIP indexing failed for {path}: {e}. "
+                            "Falling back to Tree-sitter."
+                        )
+                elif detected_lang:
                     warning_logger(
                         f"SCIP_INDEXER=true but scip-{detected_lang} binary not found. "
                         f"Falling back to Tree-sitter. Install it first."

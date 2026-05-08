@@ -450,145 +450,53 @@ class GraphWriter:
                 file_path=file_path_str,
             )
 
-    def write_function_call_groups(
+            def write_function_call_groups(
         self,
-        fn_to_fn: List[Dict],
-        fn_to_cls: List[Dict],
-        cls_to_fn: List[Dict],
-        cls_to_cls: List[Dict],
-        file_to_fn: List[Dict],
-        file_to_cls: List[Dict],
+        resolved_calls: List[Dict],
     ) -> None:
         batch_size = 1000
-        q_fn_to_fn = """
+        # Generic query matching ANY valid code element label for caller and callee
+        q_generic = """
             UNWIND $batch AS row
-            MATCH (caller:Function {name: row.caller_name, path: row.caller_file_path, line_number: row.caller_line_number})
-            MATCH (called:Function {name: row.called_name, path: row.called_file_path})
-            WHERE (row.called_line_number < 0 OR called.line_number = row.called_line_number)
-              AND (row.called_context = '' OR called.context = row.called_context)
-            MERGE (caller)-[call:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
-            SET call.confidence = row.confidence, call.resolution_tier = row.resolution_tier,
-                call.confidence_label = row.confidence_label
+            MATCH (caller {name: row.caller_name, path: row.caller_file_path, line_number: row.caller_line_number})
+            WHERE caller:Function OR caller:Class OR caller:Interface OR caller:Trait OR caller:Struct OR caller:Enum OR caller:Record OR caller:Union
+            MATCH (called {name: row.called_name, path: row.called_file_path})
+            WHERE called:Function OR called:Class OR called:Interface OR called:Trait OR called:Struct OR called:Enum OR called:Record OR caller:Union
+            MERGE (caller)-[c:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
+            SET c.confidence = row.confidence, c.resolution_tier = row.resolution_tier,
+                c.confidence_label = row.confidence_label
         """
-        q_fn_to_cls = """
-            UNWIND $batch AS row
-            MATCH (caller:Function {name: row.caller_name, path: row.caller_file_path, line_number: row.caller_line_number})
-            MATCH (called:Class {name: row.called_name, path: row.called_file_path})
-            WHERE row.called_line_number < 0 OR called.line_number = row.called_line_number
-            MERGE (caller)-[call:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
-            SET call.confidence = row.confidence, call.resolution_tier = row.resolution_tier,
-                call.confidence_label = row.confidence_label
-        """
-        q_cls_to_fn = """
-            UNWIND $batch AS row
-            MATCH (caller:Class {name: row.caller_name, path: row.caller_file_path, line_number: row.caller_line_number})
-            MATCH (called:Function {name: row.called_name, path: row.called_file_path})
-            WHERE (row.called_line_number < 0 OR called.line_number = row.called_line_number)
-              AND (row.called_context = '' OR called.context = row.called_context)
-            MERGE (caller)-[call:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
-            SET call.confidence = row.confidence, call.resolution_tier = row.resolution_tier,
-                call.confidence_label = row.confidence_label
-        """
-        q_cls_to_cls = """
-            UNWIND $batch AS row
-            MATCH (caller:Class {name: row.caller_name, path: row.caller_file_path, line_number: row.caller_line_number})
-            MATCH (called:Class {name: row.called_name, path: row.called_file_path})
-            WHERE row.called_line_number < 0 OR called.line_number = row.called_line_number
-            MERGE (caller)-[call:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
-            SET call.confidence = row.confidence, call.resolution_tier = row.resolution_tier,
-                call.confidence_label = row.confidence_label
-        """
-        q_file_to_fn = """
+        q_file_to_any = """
             UNWIND $batch AS row
             MATCH (caller:File {path: row.caller_file_path})
-            MATCH (called:Function {name: row.called_name, path: row.called_file_path})
-            WHERE (row.called_line_number < 0 OR called.line_number = row.called_line_number)
-              AND (row.called_context = '' OR called.context = row.called_context)
-            MERGE (caller)-[call:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
-            SET call.confidence = row.confidence, call.resolution_tier = row.resolution_tier,
-                call.confidence_label = row.confidence_label
+            MATCH (called {name: row.called_name, path: row.called_file_path})
+            WHERE called:Function OR called:Class OR called:Interface OR called:Trait OR called:Struct OR called:Enum OR called:Record OR called:Union
+            MERGE (caller)-[c:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
+            SET c.confidence = row.confidence, c.resolution_tier = row.resolution_tier,
+                c.confidence_label = row.confidence_label
         """
-        q_file_to_cls = """
-            UNWIND $batch AS row
-            MATCH (caller:File {path: row.caller_file_path})
-            MATCH (called:Class {name: row.called_name, path: row.called_file_path})
-            WHERE row.called_line_number < 0 OR called.line_number = row.called_line_number
-            MERGE (caller)-[call:CALLS {line_number: row.line_number, args: row.args, full_call_name: row.full_call_name}]->(called)
-            SET call.confidence = row.confidence, call.resolution_tier = row.resolution_tier,
-                call.confidence_label = row.confidence_label
-        """
-        groups: List[Tuple[str, List[Dict], str]] = [
-            ("fn→fn", fn_to_fn, q_fn_to_fn),
-            ("fn→cls", fn_to_cls, q_fn_to_cls),
-            ("cls→fn", cls_to_fn, q_cls_to_fn),
-            ("cls→cls", cls_to_cls, q_cls_to_cls),
-            ("file→fn", file_to_fn, q_file_to_fn),
-            ("file→cls", file_to_cls, q_file_to_cls),
-        ]
-        total_all = sum(len(g[1]) for g in groups)
 
-        def normalize_call_batch(batch_calls: List[Dict], label: str) -> List[Dict]:
-            normalized = []
-            for call in batch_calls:
-                if not isinstance(call, dict) or not call:
-                    warning_logger(f"[CALLS] {label}: skipping malformed call row: {call!r}")
-                    continue
-
-                called_line_number = call.get("called_line_number")
-                if called_line_number is None:
-                    called_line_number = -1
-                elif isinstance(called_line_number, bool):
-                    warning_logger(
-                        f"[CALLS] {label}: skipping call row with invalid called_line_number: {call!r}"
-                    )
-                    continue
-                else:
-                    try:
-                        called_line_number = int(called_line_number)
-                    except (TypeError, ValueError):
-                        warning_logger(
-                            f"[CALLS] {label}: skipping call row with invalid called_line_number: {call!r}"
-                        )
-                        continue
-
-                called_context = call.get("called_context")
-                if called_context is None:
-                    called_context = ""
-                elif not isinstance(called_context, str):
-                    warning_logger(
-                        f"[CALLS] {label}: skipping call row with invalid called_context: {call!r}"
-                    )
-                    continue
-
-                normalized.append(
-                    {
-                        **call,
-                        "called_line_number": called_line_number,
-                        "called_context": called_context,
-                        "confidence": call.get("confidence", 0.1),
-                        "resolution_tier": call.get("resolution_tier", 9),
-                    }
-                )
-            return normalized
+        file_calls = [c for c in resolved_calls if c["type"] == "file"]
+        code_calls = [c for c in resolved_calls if c["type"] == "function"]
 
         with self.driver.session() as session:
-            for label, calls, query in groups:
-                if not calls:
-                    info_logger(f"[CALLS] {label}: 0 (skipped)")
-                    continue
+            # Write code-to-code calls
+            if code_calls:
                 t0 = time.time()
-                for i in range(0, len(calls), batch_size):
-                    batch = normalize_call_batch(calls[i : i + batch_size], label)
-                    if not batch:
-                        continue
-                    session.run(query, batch=batch)
-                    written = min(i + batch_size, len(calls))
-                    if written % 5000 < batch_size or written == len(calls):
-                        elapsed = time.time() - t0
-                        info_logger(f"[CALLS] {label}: {written}/{len(calls)} ({elapsed:.1f}s)")
-                elapsed = time.time() - t0
-                info_logger(f"[CALLS] {label} done: {len(calls)} in {elapsed:.1f}s")
-        info_logger(f"[CALLS] All complete: {total_all} CALLS relationships processed.")
+                for i in range(0, len(code_calls), batch_size):
+                    batch = code_calls[i : i + batch_size]
+                    session.run(q_generic, batch=batch)
+                info_logger(f"[CALLS] Code-to-Code: {len(code_calls)} edges written in {time.time()-t0:.1f}s")
+
+            # Write file-to-code calls
+            if file_calls:
+                t0 = time.time()
+                for i in range(0, len(file_calls), batch_size):
+                    batch = file_calls[i : i + batch_size]
+                    session.run(q_file_to_any, batch=batch)
+                info_logger(f"[CALLS] File-to-Code: {len(file_calls)} edges written in {time.time()-t0:.1f}s")
+
+        info_logger(f"[CALLS] All complete: {len(resolved_calls)} CALLS relationships processed.")
 
     def _create_csharp_inheritance_and_interfaces(
         self, session: Any, file_data: Dict[str, Any], imports_map: dict
@@ -659,8 +567,7 @@ class GraphWriter:
         imports_map: dict,
     ) -> None:
         info_logger(
-            f"[INHERITS] Resolved {len(inheritance_batch)} inheritance links, "
-            f"{len(csharp_files)} C# files. Writing to Neo4j..."
+            f"[INHERITS] Resolving inheritance links across {len(inheritance_batch)} files..."
         )
         batch_size = 500
         with self.driver.session() as session:
@@ -689,73 +596,42 @@ class GraphWriter:
     ) -> None:
         with self.driver.session() as session:
             for file_data in files_data.values():
-                # ── Function/Method caller → Function callee ────────────────
+                # ── Code-level caller → Any code-level callee ────────────────
                 for edge in file_data.get("function_calls_scip", []):
                     try:
-                        callee_kind = edge.get("callee_kind", 0)
-                        if callee_kind == 7:  # Class instantiation
-                            session.run(
-                                """
-                                MATCH (caller {name: $caller_name, path: $caller_file, line_number: $caller_line})
-                                WHERE caller:Function OR caller:Variable OR caller:Class
-                                MATCH (callee:Class {name: $callee_name, path: $callee_file})
-                                MERGE (caller)-[:CALLS {line_number: $ref_line, source: 'scip'}]->(callee)
-                            """,
-                                caller_name=name_from_symbol(edge["caller_symbol"]),
-                                caller_file=edge["caller_file"],
-                                caller_line=edge["caller_line"],
-                                callee_name=edge["callee_name"],
-                                callee_file=edge["callee_file"],
-                                ref_line=edge["ref_line"],
-                            )
-                        else:
-                            session.run(
-                                """
-                                MATCH (caller {name: $caller_name, path: $caller_file, line_number: $caller_line})
-                                WHERE caller:Function OR caller:Variable OR caller:Class
-                                MATCH (callee:Function {name: $callee_name, path: $callee_file, line_number: $callee_line})
-                                MERGE (caller)-[:CALLS {line_number: $ref_line, source: 'scip'}]->(callee)
-                            """,
-                                caller_name=name_from_symbol(edge["caller_symbol"]),
-                                caller_file=edge["caller_file"],
-                                caller_line=edge["caller_line"],
-                                callee_name=edge["callee_name"],
-                                callee_file=edge["callee_file"],
-                                callee_line=edge["callee_line"],
-                                ref_line=edge["ref_line"],
-                            )
+                        session.run(
+                            """
+                            MATCH (caller {name: $caller_name, path: $caller_file, line_number: $caller_line})
+                            WHERE caller:Function OR caller:Variable OR caller:Class OR caller:Interface OR caller:Trait OR caller:Struct OR caller:Record OR caller:Union
+                            MATCH (callee {name: $callee_name, path: $callee_file})
+                            WHERE callee:Function OR callee:Class OR callee:Interface OR callee:Trait OR callee:Struct OR callee:Enum OR callee:Record OR callee:Union
+                            MERGE (caller)-[:CALLS {line_number: $ref_line, source: 'scip'}]->(callee)
+                        """,
+                            caller_name=name_from_symbol(edge["caller_symbol"]),
+                            caller_file=edge["caller_file"],
+                            caller_line=edge["caller_line"],
+                            callee_name=edge["callee_name"],
+                            callee_file=edge["callee_file"],
+                            ref_line=edge["ref_line"],
+                        )
                     except Exception as e:
                         warning_logger(f"Failed to write SCIP call edge: {e}")
 
-                # ── Module-level (top-level) caller → Function/Class callee ─
+                # ── Module-level (top-level) caller → Any code-level callee ─
                 for edge in file_data.get("module_level_calls_scip", []):
                     try:
-                        callee_kind = edge.get("callee_kind", 0)
-                        if callee_kind == 7:  # Class instantiation at module scope
-                            session.run(
-                                """
-                                MATCH (caller:File {path: $caller_file})
-                                MATCH (callee:Class {name: $callee_name, path: $callee_file})
-                                MERGE (caller)-[:CALLS {line_number: $ref_line, source: 'scip'}]->(callee)
-                            """,
-                                caller_file=edge["caller_file"],
-                                callee_name=edge["callee_name"],
-                                callee_file=edge["callee_file"],
-                                ref_line=edge["ref_line"],
-                            )
-                        else:
-                            session.run(
-                                """
-                                MATCH (caller:File {path: $caller_file})
-                                MATCH (callee:Function {name: $callee_name, path: $callee_file, line_number: $callee_line})
-                                MERGE (caller)-[:CALLS {line_number: $ref_line, source: 'scip'}]->(callee)
-                            """,
-                                caller_file=edge["caller_file"],
-                                callee_name=edge["callee_name"],
-                                callee_file=edge["callee_file"],
-                                callee_line=edge["callee_line"],
-                                ref_line=edge["ref_line"],
-                            )
+                        session.run(
+                            """
+                            MATCH (caller:File {path: $caller_file})
+                            MATCH (callee {name: $callee_name, path: $callee_file})
+                            WHERE callee:Function OR callee:Class OR callee:Interface OR callee:Trait OR callee:Struct OR callee:Enum OR callee:Record OR callee:Union
+                            MERGE (caller)-[:CALLS {line_number: $ref_line, source: 'scip'}]->(callee)
+                        """,
+                            caller_file=edge["caller_file"],
+                            callee_name=edge["callee_name"],
+                            callee_file=edge["callee_file"],
+                            ref_line=edge["ref_line"],
+                        )
                     except Exception as e:
                         warning_logger(f"Failed to write SCIP module-level call edge: {e}")
 
