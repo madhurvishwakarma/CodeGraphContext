@@ -785,14 +785,13 @@ const Explore = () => {
 
   // ✅ Supabase Realtime Signaling Tunnel: Bridges ChatGPT Action calls to browser's AST Code Graph!
   useEffect(() => {
-    // 1. Connection Guard: Enforce that the signaling tunnel remains completely offline
-    //    until the codebase index is 100% complete and graph data is fully loaded in memory.
     if (!graphData) {
-      console.log("[Explore Tunnel] Indexing is not complete or no graph loaded. Signaling tunnel is locked offline.");
-      return;
+      console.log(
+        "[Explore Tunnel] No in-memory graph yet; tunnel stays online for global tools (e.g. list_indexed_repositories) and cached repos."
+      );
     }
 
-    // 2. Get Supabase credentials (with 100% robust safe production fallbacks!)
+    // Get Supabase credentials (with 100% robust safe production fallbacks!)
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://husyiuqyswpudlyuskno.supabase.co";
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1c3lpdXF5c3dwdWRseXVza25vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDUwNDYsImV4cCI6MjA5NTIyMTA0Nn0.dNCRxdGlL5vgug0sB4BwhCfBx_nAt9oR0RT2Upv0al8";
     
@@ -1440,8 +1439,26 @@ const Explore = () => {
             <div className="w-full max-w-2xl mt-8 flex flex-col items-center">
               <div className="w-full bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 text-center backdrop-blur-sm max-w-lg flex flex-col gap-3">
                 <p className="text-xs text-zinc-400 leading-normal">
-                  Want to analyze and discuss your code with AI? Connect your indexed repositories with our custom GPT action:
+                  Connect ChatGPT to this browser tab. Copy your session token into the GPT chat first:
                 </p>
+                <div className="flex items-center justify-center gap-2">
+                  <code className="text-sm font-mono text-emerald-400 bg-zinc-950/80 border border-zinc-800 px-3 py-1.5 rounded-lg">
+                    session: {getOrCreateSessionId()}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prompt = `Let's connect to codegraphcontext session: ${getOrCreateSessionId()}`;
+                      navigator.clipboard.writeText(prompt).then(
+                        () => toast.success("Session prompt copied — paste it in ChatGPT"),
+                        () => toast.error("Could not copy to clipboard")
+                      );
+                    }}
+                    className="text-[10px] text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-600 px-2 py-1 rounded-lg transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <a 
                     href="https://chatgpt.com/g/g-6a1368599210819199a1c47d021020b6-codegraphcontext" 
@@ -1452,7 +1469,7 @@ const Explore = () => {
                     💬 Open CGC ChatGPT
                   </a>
                   <span className="text-[10px] text-zinc-500 font-medium">
-                    ⚠️ Keep this dashboard tab open to query
+                    Keep this tab open while ChatGPT queries your graph
                   </span>
                 </div>
               </div>

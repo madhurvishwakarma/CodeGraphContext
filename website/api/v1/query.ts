@@ -1,5 +1,6 @@
 // website/api/v1/query.ts
 import { createClient } from "@supabase/supabase-js";
+import { extractSessionToken, MISSING_SESSION_PAYLOAD } from "./lib/session";
 
 /**
  * Builds a tool-specific graceful offline response (HTTP 200).
@@ -55,7 +56,7 @@ export default async function handler(req: any, res: any) {
 
   const method = req.method;
   const params = method === "POST" ? (req.body || {}) : (req.query || {});
-  const { repo, query_type, target, cypher_query, branch, commit, session_id } = params;
+  const { repo, query_type, target, cypher_query, branch, commit } = params;
 
   if (!query_type || typeof query_type !== "string") {
     return res.status(400).json({
@@ -85,11 +86,13 @@ export default async function handler(req: any, res: any) {
   const wasmQueries = ["definitions", "callers", "callees", "file_structure", "search", "cypher"];
   const isWasmQuery = wasmQueries.includes(query_type);
 
-  const sessionToken = session_id ? String(session_id).trim().toLowerCase() : "";
+  const sessionToken = extractSessionToken(params);
 
   if (!sessionToken) {
-    return res.status(400).json({
-      error: "Missing required parameter 'session_id'. Please provide the 6-character session token to connect to your browser tab."
+    // MUST be 200 — ChatGPT maps non-2xx responses to ClientResponseError and drops the body
+    return res.status(200).json({
+      ...MISSING_SESSION_PAYLOAD,
+      ...offlineResponse(typeof query_type === "string" ? query_type : "unknown"),
     });
   }
 

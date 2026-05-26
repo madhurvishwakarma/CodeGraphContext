@@ -22,7 +22,10 @@ export default async function handler(req: any, res: any) {
     openapi: "3.1.0",
     info: {
       title: "CodeGraphContext Tunneling API",
-      description: "Zero-server-compute API that tunnels structural semantic code queries directly to Kuzu WASM and Pyodide running inside the user's browser dashboard.",
+      description:
+        "Zero-server-compute API that tunnels code-graph queries to the user's browser at https://cgc.codes/explore. " +
+        "Every request MUST include session_id: the 6-character token from the user's dashboard tab (shown on the page or in messages like 'session: l968xz'). " +
+        "Without session_id the browser tunnel cannot be reached.",
       version: "1.0.0"
     },
     servers: [
@@ -521,7 +524,8 @@ export default async function handler(req: any, res: any) {
       "/api/v1/query/list_indexed_repositories": {
         get: {
           summary: "List Indexed Repositories",
-          description: "Scans and returns all repository graphs indexed inside local WASM storage.",
+          description:
+            "Returns all repository graphs indexed in the user's browser (IndexedDB). Requires session_id from their open https://cgc.codes/explore tab.",
           operationId: "listIndexedRepositories",
           parameters: [
             {
@@ -554,6 +558,15 @@ export default async function handler(req: any, res: any) {
   // Programmatically inject 'branch' and 'commit' parameters to all endpoints in a highly DRY, robust manner!
   const commonParams = [
     {
+      name: "session_id",
+      in: "query",
+      description:
+        "REQUIRED on every call. 6-character session token from the user's open https://cgc.codes/explore browser tab. " +
+        "Always extract from the conversation (e.g. user says 'session: l968xz' → session_id=l968xz). Never omit this parameter.",
+      required: true,
+      schema: { type: "string", minLength: 6, maxLength: 6, pattern: "^[a-z0-9]{6}$" }
+    },
+    {
       name: "branch",
       in: "query",
       description: "Optional active branch name of the repository (e.g. 'main') for routing isolation.",
@@ -566,13 +579,6 @@ export default async function handler(req: any, res: any) {
       description: "Optional active 7-character commit hash of the repository (e.g. 'a1b2c3d') for routing isolation.",
       required: false,
       schema: { type: "string" }
-    },
-    {
-      name: "session_id",
-      in: "query",
-      description: "Highly recommended 6-character unique session token of the user's browser tab for 100% isolated routing. Extract this from the user's prompt (e.g. 'session: a7c92b').",
-      required: true,
-      schema: { type: "string" }
     }
   ];
 
@@ -580,8 +586,8 @@ export default async function handler(req: any, res: any) {
     const pathObj = (spec.paths as any)[pathKey];
     for (const method of ["get", "post"]) {
       if (pathObj[method] && Array.isArray(pathObj[method].parameters)) {
-        const hasBranch = pathObj[method].parameters.some((p: any) => p.name === "branch");
-        if (!hasBranch) {
+        const hasSession = pathObj[method].parameters.some((p: any) => p.name === "session_id");
+        if (!hasSession) {
           pathObj[method].parameters.push(...commonParams);
         }
       }

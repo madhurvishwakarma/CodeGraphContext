@@ -1,5 +1,6 @@
 // website/api/v1/mcp/messages.ts
 import { createClient } from "@supabase/supabase-js";
+import { extractSessionToken, MISSING_SESSION_PAYLOAD } from "../lib/session";
 
 export default async function handler(req: any, res: any) {
   // Enable CORS
@@ -190,33 +191,65 @@ export default async function handler(req: any, res: any) {
           },
           {
             name: "list_indexed_repositories",
-            description: "Scans for all repositories that have local graphs indexed in local WASM storage.",
+            description:
+              "Lists all repositories indexed in the user's browser (IndexedDB). Requires session_id from https://cgc.codes/explore.",
             inputSchema: {
               type: "object",
               properties: {
+                session_id: {
+                  type: "string",
+                  description:
+                    "REQUIRED 6-character session token from the user's open https://cgc.codes/explore tab (e.g. 'l968xz'). Extract from user message: 'session: l968xz'."
+                },
                 repo: {
                   type: "string",
-                  description: "Active GitHub repository path in 'owner/repo' format to route the request."
+                  description: "Optional filter: GitHub path 'owner/repo'."
                 },
                 branch: {
                   type: "string",
-                  description: "Optional active branch of the repository (e.g. 'main') for version-scoped routing."
+                  description: "Optional active branch (e.g. 'main')."
                 },
                 commit: {
                   type: "string",
-                  description: "Optional active 7-character commit hash of the repository (e.g. 'a1b2c3d') for version-scoped routing."
+                  description: "Optional 7-character commit hash."
                 }
               },
-              required: ["repo"]
+              required: ["session_id"]
             }
           }
         ];
+
+        const SESSION_SCHEMA = {
+          session_id: {
+            type: "string",
+            description:
+              "REQUIRED 6-character session token from the user's open https://cgc.codes/explore tab. Extract from user message (e.g. 'session: l968xz')."
+          }
+        };
+
+        const toolsWithSession = staticTools.map((tool) => {
+          const schema = tool.inputSchema as {
+            type: string;
+            properties: Record<string, unknown>;
+            required?: string[];
+          };
+          const required = new Set(schema.required ?? []);
+          required.add("session_id");
+          return {
+            ...tool,
+            inputSchema: {
+              ...schema,
+              properties: { ...SESSION_SCHEMA, ...schema.properties },
+              required: Array.from(required)
+            }
+          };
+        });
 
         return res.status(200).json({
           jsonrpc: "2.0",
           id,
           result: {
-            tools: staticTools
+            tools: toolsWithSession
           }
         });
       }
@@ -234,8 +267,6 @@ export default async function handler(req: any, res: any) {
         const repo = toolArgs?.repo || toolArgs?.repository || "";
         const branch = toolArgs?.branch || "";
         const commit = toolArgs?.commit || "";
-        const session_id = toolArgs?.session_id || "";
-
         const isGlobalTool = toolName === "list_indexed_repositories" || toolName === "search_registry_bundles";
 
         if (!isGlobalTool && (!repo || typeof repo !== "string")) {
@@ -252,7 +283,7 @@ export default async function handler(req: any, res: any) {
           });
         }
 
-        const sessionToken = session_id ? String(session_id).trim().toLowerCase() : "";
+        const sessionToken = extractSessionToken(toolArgs ?? {});
 
         if (!sessionToken) {
           return res.status(200).json({
@@ -262,7 +293,7 @@ export default async function handler(req: any, res: any) {
               isError: true,
               content: [{
                 type: "text",
-                text: "Error: Missing required argument 'session_id' inside tool arguments. Please provide your 6-character session token to establish connection."
+                text: `${MISSING_SESSION_PAYLOAD.message} Dashboard: ${MISSING_SESSION_PAYLOAD.dashboard_url}`
               }]
             }
           });
