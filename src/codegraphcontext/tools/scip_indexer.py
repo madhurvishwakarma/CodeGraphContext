@@ -44,6 +44,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils.debug_log import error_logger, info_logger, warning_logger
+from ..utils.path_ignore import file_path_has_ignore_dir_segment
 
 # ---------------------------------------------------------------------------
 # SCIP indexer orchestration
@@ -117,17 +118,6 @@ def detect_project_lang(path: Path, scip_languages: List[str]) -> Optional[str]:
 
     # Return the most frequent language
     return max(counts, key=counts.get)
-
-
-def file_path_has_ignore_dir_segment(path: Path, root: Path) -> bool:
-    """True if the path contains common ignored directory segments (node_modules, etc)."""
-    try:
-        rel = path.relative_to(root)
-        parts = rel.parts
-        ignore = {"node_modules", "vendor", ".git", "target", "build", "dist", "bin", "obj"}
-        return any(p in ignore for p in parts)
-    except ValueError:
-        return False
 
 
 class ScipIndexer:
