@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import GlassCard from "./GlassCard";
 
 const avatars = [
   { imageUrl: "https://avatars.githubusercontent.com/u/161715841?v=4", profileUrl: "https://github.com/athaxv" },
@@ -38,13 +39,13 @@ export default function TestimonialSection() {
   const prev = () => setIndex((i) => (i - 1 + reviews.length) % reviews.length);
 
   return (
-    <section className="py-24 px-4" data-aos="fade-in">
+    <section className="py-24 px-4 bg-black">
       <div className="container mx-auto max-w-6xl">
-        <div className="text-center mb-16" data-aos="fade-down">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent py-2">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-6 text-white uppercase tracking-tight py-2">
             What Teams Are Saying
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest max-w-3xl mx-auto">
             Real feedback from engineers and leaders using CodeGraphContext.
           </p>
         </div>
@@ -52,7 +53,6 @@ export default function TestimonialSection() {
           <div 
             className="relative mx-auto w-full flex items-center justify-center overflow-hidden transition-all duration-300"
             style={{ height: isMobile ? "290px" : "480px" }}
-            data-aos="zoom-in"
           >
             <OrbitingCircles iconSize={isMobile ? 36 : 56} radius={isMobile ? 100 : 185} speed={1.4}>
               {avatars.map((avatar, i) => (
@@ -60,7 +60,7 @@ export default function TestimonialSection() {
                   <img 
                     src={avatar.imageUrl} 
                     alt={`avatar-${i}`} 
-                    className={`${isMobile ? 'w-9 h-9' : 'w-14 h-14'} rounded-full border-2 border-white shadow-md dark:border-neutral-800`} 
+                    className={`${isMobile ? 'w-9 h-9' : 'w-14 h-14'} rounded-full border border-white/20 filter grayscale hover:grayscale-0 transition-all`} 
                   />
                 </a>
               ))}
@@ -71,19 +71,24 @@ export default function TestimonialSection() {
                     <img 
                       src={avatar.imageUrl} 
                       alt={`avatar-inner-${i}`} 
-                      className={`${isMobile ? 'w-7 h-7' : 'w-11 h-11'} rounded-full border-2 border-white shadow-md dark:border-neutral-800`} 
+                      className={`${isMobile ? 'w-7 h-7' : 'w-11 h-11'} rounded-full border border-white/20 filter grayscale hover:grayscale-0 transition-all`} 
                     />
                  </a>
               ))}
             </OrbitingCircles>
           </div>
 
-          <div data-aos="fade-left" data-aos-delay="200">
-            <Card className="dark:bg-card/50 shadow-sm min-h-[300px] flex flex-col justify-between">
-              <CardHeader>
-                <CardTitle className="text-3xl md:text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent py-2">
+          <div className="relative">
+            {/* Decorative Quote Mark */}
+            <div className="absolute -top-12 -left-8 text-9xl font-black text-white/5 pointer-events-none select-none" style={{ fontFamily: "serif" }}>
+              "
+            </div>
+            
+            <GlassCard hoverable={false} glowColor="none" className="min-h-[300px] flex flex-col justify-between p-2">
+              <div className="p-6">
+                <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-widest py-2 mb-4">
                   Teams Love It
-                </CardTitle>
+                </h3>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={index}
@@ -92,13 +97,13 @@ export default function TestimonialSection() {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <CardDescription className="text-base md:text-lg text-muted-foreground pt-4">
+                    <p className="text-sm md:text-base text-gray-400 pt-4 leading-relaxed font-mono">
                       “{reviews[index].quote}”
-                    </CardDescription>
+                    </p>
                   </motion.div>
                 </AnimatePresence>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="p-6 pt-0 mt-auto">
                 <div className="flex items-center justify-between gap-4">
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -108,17 +113,17 @@ export default function TestimonialSection() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.3, delay: 0.1 }}
                     >
-                      <p className="font-semibold">{reviews[index].author}</p>
-                      <p className="text-sm text-muted-foreground">{reviews[index].role}</p>
+                      <p className="text-[10px] font-black text-white uppercase tracking-widest">{reviews[index].author}</p>
+                      <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">{reviews[index].role}</p>
                     </motion.div>
                   </AnimatePresence>
                   <div className="flex gap-2">
-                    <Button onClick={prev} size="icon" variant="outline"><ChevronLeft className="h-4 w-4" /></Button>
-                    <Button onClick={next} size="icon"><ChevronRight className="h-4 w-4" /></Button>
+                    <Button onClick={prev} size="icon" variant="outline" className="rounded-full bg-transparent border-white/20 hover:bg-white hover:text-black text-white transition-colors"><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button onClick={next} size="icon" className="rounded-full bg-white text-black hover:bg-gray-200 transition-colors"><ChevronRight className="h-4 w-4" /></Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
           </div>
         </div>
       </div>

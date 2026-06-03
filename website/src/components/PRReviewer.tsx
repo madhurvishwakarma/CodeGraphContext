@@ -2656,7 +2656,7 @@ export default function PRReviewer({ data, onClose }: { data: any, onClose: () =
               }`}
             >
               {/* Subtle top glow bar */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-white" />
 
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -2728,7 +2728,7 @@ export default function PRReviewer({ data, onClose }: { data: any, onClose: () =
                   <Button
                     type="submit"
                     disabled={isPublishing}
-                    className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/20"
+                    className="w-full rounded-xl bg-white text-black hover:bg-gray-200"
                   >
                     {isPublishing ? (
                       <span className="flex items-center justify-center gap-2">
@@ -2771,7 +2771,7 @@ export default function PRReviewer({ data, onClose }: { data: any, onClose: () =
               }`}
             >
               {/* Subtle top glow bar */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-white" />
 
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -2836,7 +2836,7 @@ export default function PRReviewer({ data, onClose }: { data: any, onClose: () =
                   <Button
                     type="button"
                     onClick={handleCopyAndLaunchChatGPT}
-                    className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+                    className="w-full rounded-xl bg-white text-black hover:bg-gray-200 flex items-center justify-center gap-2"
                   >
                     Copy & Open ChatGPT
                   </Button>

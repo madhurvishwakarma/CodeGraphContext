@@ -8,6 +8,8 @@ import { Search, Download, Package, Calendar, HardDrive, Star, Loader2, External
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import GlassCard from './GlassCard';
+import SectionDivider from './SectionDivider';
 
 interface Bundle {
     name: string;
@@ -230,20 +232,21 @@ const BundleRegistrySection = () => {
     };
 
     return (
-        <section id="registry" className="w-full py-20 bg-background/50 border-t border-white/5 relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 relative z-10">
+        <section id="registry" className="w-full py-24 bg-black relative overflow-hidden">
+            <SectionDivider variant="dots" className="absolute top-0 left-0 right-0 z-0 opacity-50" />
+            <div className="max-w-7xl mx-auto px-6 relative z-10 pt-10">
                 
                 {/* Section Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6" data-aos="fade-up">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
                     <div>
-                        <Badge variant="secondary" className="mb-4">
+                        <Badge variant="secondary" className="mb-4 bg-white/10 text-white rounded-full uppercase tracking-widest text-[10px] font-bold">
                             <Package className="w-4 h-4 mr-2" />
                             Bundle Registry
                         </Badge>
-                        <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                        <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight">
                             Pre-indexed CGC Bundles
                         </h2>
-                        <p className="text-muted-foreground mt-2 max-w-xl">
+                        <p className="text-xs font-mono text-gray-500 uppercase tracking-widest mt-4 max-w-xl">
                             Browse and download pre-compiled context bundles for popular repositories. Or search servers and community contributions.
                         </p>
                     </div>
@@ -252,45 +255,45 @@ const BundleRegistrySection = () => {
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            className="w-full sm:w-auto border-white/10 text-white hover:bg-white/5 hover:border-white/20 transition-all duration-300"
+                            className="w-full sm:w-auto border-white/10 bg-transparent text-white hover:bg-white hover:text-black transition-all duration-300 rounded-full uppercase tracking-widest text-[10px] font-bold px-6 py-6"
                             onClick={handleShareRegistry}
                         >
-                            <Share2 className="w-4 h-4 mr-2 text-indigo-400" />
+                            <Share2 className="w-4 h-4 mr-2" />
                             Share Registry
                         </Button>
 
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                                <Button variant="outline" size="sm" className="w-full sm:w-auto border-white/10 bg-transparent text-white hover:bg-white hover:text-black transition-all duration-300 rounded-full uppercase tracking-widest text-[10px] font-bold px-6 py-6">
                                     <HelpCircle className="w-4 h-4 mr-2" />
                                     How to Use Bundles
                                 </Button>
                             </DialogTrigger>
-                        <DialogContent className="sm:max-w-[480px]">
+                        <DialogContent className="sm:max-w-[480px] bg-black border border-white/20 rounded-3xl text-white">
                             <DialogHeader>
-                                <DialogTitle>How to Use Pre-indexed Bundles</DialogTitle>
-                                <DialogDescription>
+                                <DialogTitle className="font-black uppercase tracking-widest text-lg">How to Use Pre-indexed Bundles</DialogTitle>
+                                <DialogDescription className="text-xs font-mono text-gray-500 uppercase tracking-widest">
                                     Get up and running with a pre-built repository context in seconds.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <h4 className="font-semibold text-sm">1. Install the CLI</h4>
-                                    <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">pip install codegraphcontext</pre>
+                                    <h4 className="font-bold text-xs uppercase tracking-widest">1. Install the CLI</h4>
+                                    <pre className="bg-white/5 border border-white/10 p-3 rounded-2xl text-[10px] font-mono overflow-x-auto text-white">pip install codegraphcontext</pre>
                                 </div>
                                 <div className="space-y-2">
-                                    <h4 className="font-semibold text-sm">2. Download and Load a Bundle</h4>
-                                    <p className="text-xs text-muted-foreground">
+                                    <h4 className="font-bold text-xs uppercase tracking-widest">2. Download and Load a Bundle</h4>
+                                    <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
                                         Click "Copy Command" on any bundle card below to copy the load command. It automatically downloads and installs the bundle context locally:
                                     </p>
-                                    <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">cgc load numpy</pre>
+                                    <pre className="bg-white/5 border border-white/10 p-3 rounded-2xl text-[10px] font-mono overflow-x-auto text-white">cgc load numpy</pre>
                                 </div>
                                 <div className="space-y-2">
-                                    <h4 className="font-semibold text-sm">3. Query Context with AI Tools</h4>
-                                    <p className="text-xs text-muted-foreground">
+                                    <h4 className="font-bold text-xs uppercase tracking-widest">3. Query Context with AI Tools</h4>
+                                    <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
                                         Ask questions or use our MCP server to feed the code index directly to Cursor, Windsurf, or Claude:
                                     </p>
-                                    <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">cgc query "How is indexing structured?"</pre>
+                                    <pre className="bg-white/5 border border-white/10 p-3 rounded-2xl text-[10px] font-mono overflow-x-auto text-white">cgc query "How is indexing structured?"</pre>
                                 </div>
                             </div>
                         </DialogContent>
@@ -308,25 +311,25 @@ const BundleRegistrySection = () => {
                 )}
 
                 {/* Search and Filters */}
-                <div className="mb-8 space-y-4" data-aos="fade-up">
+                <div className="mb-8 space-y-4">
                     <div className="relative">
-                        <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                        <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-500" />
                         <Input
-                            placeholder="Search bundles by name, repository, or description..."
+                            placeholder="SEARCH BUNDLES..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
+                            className="pl-12 bg-black border-white/20 text-white rounded-full h-12 uppercase tracking-widest text-xs font-mono placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-white"
                         />
                     </div>
 
                     {/* Category Tabs */}
                     <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <TabsList className="bg-white/5 p-1 rounded-xl shadow-inner border border-white/5 gap-1">
+                        <TabsList className="bg-white/5 p-1.5 rounded-full border border-white/10 gap-1 h-auto">
                             {categories.map(category => (
                                 <TabsTrigger 
                                     key={category.id} 
                                     value={category.id}
-                                    className="py-2 px-4 text-xs font-semibold rounded-lg transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md text-gray-600 dark:text-gray-400 hover:text-white"
+                                    className="py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-full transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-black text-gray-500 hover:text-white"
                                 >
                                     {category.label}
                                 </TabsTrigger>
@@ -355,7 +358,7 @@ const BundleRegistrySection = () => {
                 )}
 
                 {!loading && filteredBundles.length > 0 && (
-                    <div className="w-full py-4" data-aos="fade-up">
+                    <div className="w-full py-4">
                         {/* Vertical Scroll Grid */}
                         <div
                             id="registry-grid"
@@ -370,14 +373,15 @@ const BundleRegistrySection = () => {
                                     key={`${bundle.repo}-${index}`}
                                     className="h-full"
                                 >
-                                    <Card
-                                        className="h-full hover:shadow-lg transition-all duration-300 hover:scale-[1.01] border border-white/10 dark:border-white/20 bg-black/40 backdrop-blur-xl shadow-xl flex flex-col justify-between"
+                                    <GlassCard
+                                        glowColor="none"
+                                        className="h-full flex flex-col justify-between"
                                     >
-                                        <CardHeader className="pb-4">
+                                        <div className="p-6 pb-4">
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1 min-w-0">
-                                                    <CardTitle className="text-lg text-white font-bold truncate">{bundle.name}</CardTitle>
-                                                    <CardDescription className="text-xs mt-1 truncate">
+                                                    <CardTitle className="text-lg text-white font-black uppercase tracking-widest truncate">{bundle.name}</CardTitle>
+                                                    <CardDescription className="text-[10px] font-mono mt-1 truncate">
                                                         <a
                                                             href={`https://github.com/${bundle.repo}`}
                                                             target="_blank"
@@ -390,16 +394,16 @@ const BundleRegistrySection = () => {
                                                     </CardDescription>
                                                 </div>
                                                 {bundle.category && (
-                                                    <Badge variant="outline" className="ml-2 shrink-0 border-white/10 text-gray-300 bg-white/5">
+                                                    <Badge variant="outline" className="ml-2 shrink-0 border-white/20 text-white bg-transparent rounded-full text-[8px] uppercase tracking-widest font-black">
                                                         {bundle.category}
                                                     </Badge>
                                                 )}
                                             </div>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4 pt-0">
+                                        </div>
+                                        <div className="p-6 pt-0 space-y-5">
                                             {/* Description */}
                                             {bundle.description ? (
-                                                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 h-8">
+                                                <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest line-clamp-2 h-8">
                                                     {bundle.description}
                                                 </p>
                                             ) : (
@@ -447,31 +451,31 @@ const BundleRegistrySection = () => {
                                             </div>
 
                                             {/* Action Buttons */}
-                                            <div className="flex gap-2.5 w-full pt-2">
-                                                <Button className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-md border-0 text-xs py-2 rounded-lg" asChild>
+                                            <div className="flex gap-3 w-full pt-2">
+                                                <Button className="flex-1 bg-white hover:bg-gray-200 text-black border-0 text-[10px] uppercase font-black tracking-widest py-3 rounded-full" asChild>
                                                     <a href={`/explore?bundle_url=${encodeURIComponent(bundle.download_url)}`}>
-                                                        <img src="/cgcIcon.png" alt="CGC" className="w-4 h-4 mr-1.5 shrink-0" />
+                                                        <img src="/cgcIcon-white.png" alt="CGC" className="w-3 h-3 mr-1.5 shrink-0 invert" />
                                                         Visualize
                                                     </a>
                                                 </Button>
                                                 <Button 
                                                     variant="outline" 
-                                                    className="flex-1 text-xs py-2 rounded-lg bg-black/20 border-white/10 text-white hover:bg-white/5"
+                                                    className="flex-1 text-[10px] uppercase font-black tracking-widest py-3 rounded-full bg-transparent border-white/20 text-white hover:bg-white hover:text-black transition-colors"
                                                     onClick={() => handleDownloadBundle(bundle.download_url, bundle.bundle_name || `${bundle.name}.cgc`)}
                                                     disabled={downloadingUrls[bundle.download_url]}
                                                 >
                                                     {downloadingUrls[bundle.download_url] ? (
-                                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0 text-primary" />
+                                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin shrink-0" />
                                                     ) : (
                                                         <Download className="w-3.5 h-3.5 mr-1.5 shrink-0" />
                                                     )}
-                                                    {downloadingUrls[bundle.download_url] ? "Downloading..." : "Download"}
+                                                    {downloadingUrls[bundle.download_url] ? "DOWNLOADING..." : "DOWNLOAD"}
                                                 </Button>
                                             </div>
 
                                             {/* Usage Hint */}
-                                            <div className="bg-black/40 border border-white/5 p-2 rounded-lg text-[10px] font-mono flex items-center justify-between gap-2 group/code">
-                                                <span className="flex-1 truncate text-gray-600 dark:text-gray-400">
+                                            <div className="bg-white/5 border border-white/10 p-2.5 rounded-full px-4 text-[10px] font-mono flex items-center justify-between gap-2 group/code">
+                                                <span className="flex-1 truncate text-gray-400">
                                                     cgc load {bundle.bundle_name || `${bundle.name}-${bundle.version || 'latest'}.cgc`}
                                                 </span>
                                                 <button
@@ -479,7 +483,7 @@ const BundleRegistrySection = () => {
                                                         bundle.bundle_name || `${bundle.name}-${bundle.version || 'latest'}.cgc`,
                                                         index
                                                     )}
-                                                    className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
+                                                    className="shrink-0 p-1.5 rounded-full hover:bg-white hover:text-black transition-colors"
                                                     aria-label={`Copy command for ${bundle.name}`}
                                                     title="Copy to clipboard"
                                                 >
@@ -490,8 +494,8 @@ const BundleRegistrySection = () => {
                                                     )}
                                                 </button>
                                             </div>
-                                        </CardContent>
-                                    </Card>
+                                        </div>
+                                    </GlassCard>
                                 </div>
                             ))}
                         </div>
@@ -500,7 +504,7 @@ const BundleRegistrySection = () => {
 
                 {/* Stats Summary */}
                 {!loading && bundles.length > 0 && (
-                    <div className="mt-12 text-center text-sm text-muted-foreground" data-aos="fade-up">
+                    <div className="mt-12 text-center text-[10px] font-mono uppercase tracking-widest text-gray-500">
                         <p>
                             Showing {filteredBundles.length} of {bundles.length} available bundles
                         </p>

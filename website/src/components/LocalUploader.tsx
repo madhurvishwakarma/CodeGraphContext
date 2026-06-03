@@ -457,10 +457,10 @@ export default function LocalUploader({ onComplete, plain }: { onComplete: (data
       
       {/* Tab Selectors */}
       <div className="grid grid-cols-2 sm:flex bg-white/5 p-1.5 rounded-2xl mb-6 relative z-10 w-full shadow-inner border border-white/5 gap-1.5 sm:gap-2">
-        <button onClick={() => setActiveTab('folder')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'folder' ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>Folder</button>
-        <button onClick={() => setActiveTab('zip')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'zip' ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>ZIP</button>
-        <button onClick={() => setActiveTab('cgc')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'cgc' ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>CGC Bundle</button>
-        <button onClick={() => setActiveTab('github')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'github' ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>GitHub</button>
+        <button onClick={() => setActiveTab('folder')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'folder' ? 'bg-white text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>Folder</button>
+        <button onClick={() => setActiveTab('zip')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'zip' ? 'bg-white text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>ZIP</button>
+        <button onClick={() => setActiveTab('cgc')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'cgc' ? 'bg-white text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>CGC Bundle</button>
+        <button onClick={() => setActiveTab('github')} className={`w-full sm:flex-1 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === 'github' ? 'bg-white text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>GitHub</button>
       </div>
 
 
@@ -563,8 +563,8 @@ export default function LocalUploader({ onComplete, plain }: { onComplete: (data
           
           <div className="w-full bg-gray-800 rounded-full h-2 mt-2 overflow-hidden shadow-inner border border-white/5">
             <div 
-              className="bg-gradient-to-r from-purple-400 to-indigo-400 h-2 rounded-full transition-all duration-300 ease-out relative" 
-              style={{ width: `${progress.value}%`, boxShadow: '0 0 15px rgba(168, 85, 247, 0.8)' }}
+              className="bg-white h-2 rounded-full transition-all duration-300 ease-out relative" 
+              style={{ width: `${progress.value}%` }}
             >
                <div className="absolute inset-0 bg-white/30 truncate" style={{animation: "shimmer 2s infinite linear"}}></div>
             </div>
@@ -624,9 +624,9 @@ export default function LocalUploader({ onComplete, plain }: { onComplete: (data
                     </div>
                     <div 
                       onClick={() => updateConfig({ indexVariables: !config.indexVariables })}
-                      className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-all flex items-center shrink-0 ${config.indexVariables ? 'bg-purple-500 justify-end' : 'bg-zinc-800 justify-start'}`}
+                      className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-all flex items-center shrink-0 ${config.indexVariables ? 'bg-white justify-end' : 'bg-zinc-800 justify-start'}`}
                     >
-                      <motion.div layout className="w-4 h-4 rounded-full bg-white shadow-md" />
+                      <motion.div layout className={`w-4 h-4 rounded-full shadow-md ${config.indexVariables ? 'bg-black' : 'bg-white'}`} />
                     </div>
                   </div>
 
@@ -642,9 +642,9 @@ export default function LocalUploader({ onComplete, plain }: { onComplete: (data
                     </div>
                     <div 
                       onClick={() => updateConfig({ skipTests: !config.skipTests })}
-                      className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-all flex items-center shrink-0 ${config.skipTests ? 'bg-purple-500 justify-end' : 'bg-zinc-800 justify-start'}`}
+                      className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-all flex items-center shrink-0 ${config.skipTests ? 'bg-white justify-end' : 'bg-zinc-800 justify-start'}`}
                     >
-                      <motion.div layout className="w-4 h-4 rounded-full bg-white shadow-md" />
+                      <motion.div layout className={`w-4 h-4 rounded-full shadow-md ${config.skipTests ? 'bg-black' : 'bg-white'}`} />
                     </div>
                   </div>
 
@@ -716,7 +716,7 @@ export default function LocalUploader({ onComplete, plain }: { onComplete: (data
                   </Button>
                   <Button 
                     onClick={() => setIsConfigOpen(false)} 
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-xl py-5 shadow-lg cursor-pointer"
+                    className="flex-1 bg-white hover:bg-gray-200 text-black rounded-xl py-5 shadow-lg cursor-pointer"
                   >
                     Apply Settings
                   </Button>
