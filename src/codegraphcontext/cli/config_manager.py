@@ -234,7 +234,7 @@ def load_config() -> Dict[str, str]:
     # Load global config
     if CONFIG_FILE.exists():
         try:
-            with open(CONFIG_FILE, "r") as f:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
@@ -247,7 +247,7 @@ def load_config() -> Dict[str, str]:
     local_env = find_local_env()
     if local_env and local_env.exists():
         try:
-            with open(local_env, "r") as f:
+            with open(local_env, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
@@ -321,7 +321,7 @@ def save_config(config: Dict[str, str], preserve_db_credentials: bool = True):
     if preserve_db_credentials and CONFIG_FILE.exists():
         # Load existing credentials from file to preserve them
         try:
-            with open(CONFIG_FILE, "r") as f:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
@@ -342,7 +342,7 @@ def save_config(config: Dict[str, str], preserve_db_credentials: bool = True):
                 credentials_to_write[key] = config[key]
     
     try:
-        with open(CONFIG_FILE, "w") as f:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             f.write("# CodeGraphContext Configuration\n")
             f.write(f"# Location: {CONFIG_FILE}\n\n")
             
@@ -696,7 +696,7 @@ def load_context_config() -> ContextConfig:
         return cfg
 
     try:
-        with open(CONTEXT_CONFIG_FILE, "r") as f:
+        with open(CONTEXT_CONFIG_FILE, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
 
         contexts: Dict[str, ContextInfo] = {}
@@ -746,7 +746,7 @@ def save_context_config(cfg: ContextConfig) -> None:
     }
 
     try:
-        with open(CONTEXT_CONFIG_FILE, "w") as f:
+        with open(CONTEXT_CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.dump(raw, f, default_flow_style=False, sort_keys=False)
     except Exception as e:
         console.print(f"[red]Error saving config.yaml: {e}[/red]")
@@ -838,7 +838,7 @@ def resolve_context(
         local_db = "falkordb"
         if local_yaml.exists():
             try:
-                with open(local_yaml) as f:
+                with open(local_yaml, encoding="utf-8") as f:
                     local_raw = yaml.safe_load(f) or {}
                 local_db = local_raw.get("database", "falkordb")
             except Exception:
@@ -1053,7 +1053,7 @@ def discover_child_contexts(
                 local_yaml = candidate / "config.yaml"
                 if local_yaml.exists():
                     try:
-                        with open(local_yaml) as f:
+                        with open(local_yaml, encoding="utf-8") as f:
                             raw = yaml.safe_load(f) or {}
                         local_db = raw.get("database", "falkordb")
                     except Exception:
@@ -1082,7 +1082,7 @@ def _load_workspace_mappings() -> Dict[str, Dict[str, str]]:
     if not CONTEXT_CONFIG_FILE.exists():
         return {}
     try:
-        with open(CONTEXT_CONFIG_FILE, "r") as f:
+        with open(CONTEXT_CONFIG_FILE, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
         return raw.get("workspace_mappings", {}) or {}
     except Exception:
@@ -1096,13 +1096,13 @@ def _save_workspace_mappings(mappings: Dict[str, Dict[str, str]]) -> None:
     raw: Dict[str, Any] = {}
     if CONTEXT_CONFIG_FILE.exists():
         try:
-            with open(CONTEXT_CONFIG_FILE, "r") as f:
+            with open(CONTEXT_CONFIG_FILE, "r", encoding="utf-8") as f:
                 raw = yaml.safe_load(f) or {}
         except Exception:
             raw = {}
     raw["workspace_mappings"] = mappings
     try:
-        with open(CONTEXT_CONFIG_FILE, "w") as f:
+        with open(CONTEXT_CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.dump(raw, f, default_flow_style=False, sort_keys=False)
     except Exception as e:
         console.print(f"[red]Error saving workspace mappings: {e}[/red]")
@@ -1124,7 +1124,7 @@ def save_workspace_mapping(cwd: Path, context_path: Path) -> None:
     local_yaml = context_path / "config.yaml"
     if local_yaml.exists():
         try:
-            with open(local_yaml) as f:
+            with open(local_yaml, encoding="utf-8") as f:
                 raw = yaml.safe_load(f) or {}
             local_db = raw.get("database", "falkordb")
         except Exception:
