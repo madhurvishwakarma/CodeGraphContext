@@ -19,10 +19,17 @@ console = Console()
 CONFIG_DIR = Path.home() / ".codegraphcontext"
 CONFIG_FILE = CONFIG_DIR / ".env"
 
+# Keys that pin embedded DB directories; must not bleed across profiles via local .env
+DB_PATH_ENV_KEYS = frozenset({
+    "FALKORDB_PATH", "FALKORDB_SOCKET_PATH", "KUZUDB_PATH", "LADYBUGDB_PATH",
+})
+
 # Database credential keys (stored in same .env file but not managed as config)
 DATABASE_CREDENTIAL_KEYS = {
     "NEO4J_URI", "NEO4J_USERNAME", "NEO4J_PASSWORD", "NEO4J_DATABASE",
-    "NORNIC_URI", "NORNIC_USERNAME", "NORNIC_PASSWORD", "NORNIC_DATABASE"
+    "NORNIC_URI", "NORNIC_USERNAME", "NORNIC_PASSWORD", "NORNIC_DATABASE",
+    "FALKORDB_HOST", "FALKORDB_PORT", "FALKORDB_PASSWORD", "FALKORDB_SSL",
+    "FALKORDB_GRAPH_NAME",
 }
 
 # Default configuration values
@@ -669,7 +676,10 @@ def _default_global_db_path(database: str) -> str:
     if database == "falkordb":
         custom_path = load_config().get("FALKORDB_PATH")
         if custom_path:
-            return str(Path(custom_path).resolve())
+            resolved = Path(custom_path).resolve()
+            # Ignore paths from another profile/repo that leaked via local .env
+            if str(resolved).startswith(str(CONFIG_DIR.resolve())):
+                return str(resolved)
         if _LEGACY_FALKORDB_PATH.exists():
             return str(_LEGACY_FALKORDB_PATH)
     return str(CONFIG_DIR / "global" / "db" / database)

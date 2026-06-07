@@ -34,6 +34,22 @@ from .config_manager import resolve_context, ResolvedContext, register_repo_in_c
 console = Console()
 
 
+def _fail_services_init() -> None:
+    """Abort the CLI command when database/services could not be initialized."""
+    raise typer.Exit(code=1)
+
+
+def _kuzu_fallback_path(ctx: ResolvedContext) -> Optional[str]:
+    """Derive a KùzuDB directory when falling back from another backend."""
+    if ctx.db_path:
+        return str(Path(ctx.db_path).parent / "kuzudb")
+    try:
+        from .config_manager import _default_global_db_path
+        return _default_global_db_path("kuzudb")
+    except Exception:
+        return None
+
+
 def _print_call_resolution_diagnostics(graph_builder: GraphBuilder, limit: int = 5) -> None:
     diagnostics = getattr(graph_builder, "last_call_resolution_diagnostics", [])
     if not diagnostics:
@@ -59,14 +75,17 @@ def _print_call_resolution_diagnostics(graph_builder: GraphBuilder, limit: int =
     console.print(table)
 
 
-def _initialize_services(cli_context_flag: Optional[str] = None) -> tuple[Any, Any, Any, ResolvedContext]:
+def _initialize_services(
+    cli_context_flag: Optional[str] = None,
+    cwd: Optional[Path] = None,
+) -> tuple[Any, Any, Any, ResolvedContext]:
     """
     Initializes and returns core service managers based on the resolved context.
     Returns (db_manager, graph_builder, code_finder, resolved_context).
     """
     ensure_first_run_bootstrap()
     console.print("[dim]Resolving context...[/dim]")
-    ctx = resolve_context(cli_context_flag)
+    ctx = resolve_context(cli_context_flag, cwd=cwd)
     
     # Let the user know what context we're operating in
     if ctx.mode == "named":
@@ -93,7 +112,7 @@ def _initialize_services(cli_context_flag: Optional[str] = None) -> tuple[Any, A
         db_manager = get_database_manager(db_path=runtime_path or ctx.db_path)
     except ValueError as e:
         console.print(f"[bold red]Database Configuration Error:[/bold red] {e}")
-        return None, None, None, ctx
+        _fail_services_init()
 
     try:
         db_manager.get_driver()
@@ -110,15 +129,16 @@ def _initialize_services(cli_context_flag: Optional[str] = None) -> tuple[Any, A
             except Exception:
                 pass
             
-            # Re-initialize explicitly with KùzuDB
+            # Re-initialize explicitly with KùzuDB (never reuse the FalkorDB directory)
             from ..core.database_kuzu import KuzuDBManager
-            db_manager = KuzuDBManager()
+            kuzu_path = _kuzu_fallback_path(ctx)
+            db_manager = KuzuDBManager(db_path=kuzu_path)
             try:
                 db_manager.get_driver()
                 console.print("[green]✓[/green] Successfully switched to KùzuDB fallback")
             except Exception as kuzu_e:
                 console.print(f"[bold red]Critical Error:[/bold red] Both FalkorDB and KùzuDB failed: {kuzu_e}")
-                return None, None, None, ctx
+                _fail_services_init()
         else:
             selected_db = (
                 os.environ.get("CGC_RUNTIME_DB_TYPE")
@@ -135,20 +155,20 @@ def _initialize_services(cli_context_flag: Optional[str] = None) -> tuple[Any, A
                     console.print("[cyan]Neo4j failed and CGC_ALLOW_NEO4J_FALLBACK=true. Falling back to KuzuDB...[/cyan]")
                     try:
                         from ..core.database_kuzu import KuzuDBManager
-                        db_manager = KuzuDBManager()
+                        db_manager = KuzuDBManager(db_path=_kuzu_fallback_path(ctx))
                         db_manager.get_driver()
                         console.print("[green]✓[/green] Successfully switched to KuzuDB fallback")
                     except Exception as kuzu_e:
                         console.print(f"[bold red]Critical Error:[/bold red] Neo4j failed and KuzuDB fallback failed: {kuzu_e}")
-                        return None, None, None, ctx
+                        _fail_services_init()
                 else:
                     if selected_db == "neo4j":
                         console.print("[yellow]Tip:[/yellow] To continue without Neo4j, rerun with --db kuzudb")
-                    return None, None, None, ctx
+                    _fail_services_init()
             else:
                 console.print(f"[bold red]Database Connection Error:[/bold red] {e}")
                 console.print("Please ensure your database is configured correctly or run 'cgc doctor'.")
-                return None, None, None, ctx
+                _fail_services_init()
     
     # The GraphBuilder requires an event loop, even for synchronous-style execution
     try:
@@ -224,17 +244,18 @@ async def _run_index_with_progress(graph_builder: GraphBuilder, path_obj: Path, 
 def index_helper(path: str, context: Optional[str] = None):
     """Synchronously indexes a repository in a given context."""
     time_start = time.time()
-    services = _initialize_services(context)
+    path_obj = Path(path).resolve()
+    index_cwd = path_obj if path_obj.is_dir() else path_obj.parent
+    services = _initialize_services(context, cwd=index_cwd)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, graph_builder, code_finder, ctx = services
-    path_obj = Path(path).resolve()
 
     if not path_obj.exists():
         console.print(f"[red]Error: Path does not exist: {path_obj}[/red]")
         db_manager.close_driver()
-        return
+        raise typer.Exit(code=1)
 
     indexed_repos = code_finder.list_indexed_repositories()
     repo_exists = any_repo_matches_path(indexed_repos, path_obj)
@@ -298,7 +319,7 @@ def add_package_helper(package_name: str, language: str, context: Optional[str] 
     """Synchronously indexes a package."""
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, graph_builder, code_finder, ctx = services
 
@@ -332,7 +353,7 @@ def list_repos_helper(context: Optional[str] = None):
     """Lists all indexed repositories."""
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
     
     db_manager, _, code_finder, ctx = services
     
@@ -362,7 +383,7 @@ def delete_helper(repo_path: str, context: Optional[str] = None):
     """Deletes a repository from the graph."""
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, graph_builder, _, ctx = services
     
@@ -382,7 +403,7 @@ def cypher_helper(query: str, context: Optional[str] = None):
     """Executes a read-only Cypher query."""
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, _, _, ctx = services
     
@@ -393,7 +414,7 @@ def cypher_helper(query: str, context: Optional[str] = None):
     if re.search(pattern, query, re.IGNORECASE):
         console.print("[bold red]Error: This command only supports read-only queries.[/bold red]")
         db_manager.close_driver()
-        return
+        raise typer.Exit(code=1)
 
     try:
         with db_manager.get_driver().session() as session:
@@ -412,7 +433,7 @@ def cypher_helper_visual(query: str, context: Optional[str] = None):
     
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, _, _, ctx = services
     
@@ -423,7 +444,7 @@ def cypher_helper_visual(query: str, context: Optional[str] = None):
     if re.search(pattern, query, re.IGNORECASE):
         console.print("[bold red]Error: This command only supports read-only queries.[/bold red]")
         db_manager.close_driver()
-        return
+        raise typer.Exit(code=1)
 
     try:
         with db_manager.get_driver().session() as session:
@@ -449,7 +470,7 @@ def visualize_helper(repo_path: Optional[str] = None, port: int = 8000, context:
     """Generates an interactive visualization using the Playground UI."""
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, _, _, ctx = services
     
@@ -546,7 +567,7 @@ def reindex_helper(path: str, context: Optional[str] = None):
     time_start = time.time()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, graph_builder, code_finder, ctx = services
     path_obj = Path(path).resolve()
@@ -595,7 +616,7 @@ def clean_helper(context: Optional[str] = None):
     """Remove orphaned nodes and relationships from the database."""
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, _, _, ctx = services
     
@@ -643,7 +664,7 @@ def stats_helper(path: str = None, context: Optional[str] = None):
     """Show indexing statistics for a repository or overall."""
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, _, code_finder, ctx = services
     
@@ -753,7 +774,7 @@ def watch_helper(path: str, context: Optional[str] = None):
     
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        _fail_services_init()
 
     db_manager, graph_builder, code_finder, ctx = services
     path_obj = Path(path).resolve()

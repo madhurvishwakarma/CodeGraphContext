@@ -302,6 +302,7 @@ def _load_credentials(cli_context_flag: Optional[str] = None):
         ensure_config_dir,
         codegraphcontext_dotenv_at_cwd,
         normalize_config_path,
+        DB_PATH_ENV_KEYS,
     )
     
     # Ensure config directory exists (lazy initialization)
@@ -371,6 +372,11 @@ def _load_credentials(cli_context_flag: Optional[str] = None):
         if local_cgc_env and local_cgc_env.resolve() != global_env_path.resolve():
             with open(local_cgc_env, "r", encoding="utf-8", errors="replace") as f:
                 vals = dotenv_values(stream=f)
+                # Do not let a repo-local profile override another user's global DB paths.
+                vals = {
+                    k: v for k, v in (vals or {}).items()
+                    if k not in DB_PATH_ENV_KEYS
+                }
                 _append_source(str(local_cgc_env), vals)
     except Exception as e:
         console.print(
@@ -622,7 +628,8 @@ def bundle_export(
     
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, _, code_finder = services[:3]
     
     try:
@@ -655,6 +662,7 @@ def bundle_export(
 def bundle_import(
     bundle_file: str = typer.Argument(..., help="Path to the .cgc bundle file to import"),
     clear: bool = typer.Option(False, "--clear", help="Clear existing graph data before importing"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation when using --clear"),
     context: Optional[str] = typer.Option(None, "--context", "-c", help="Specific context to use"),
 ):
     """
@@ -672,7 +680,8 @@ def bundle_import(
     
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -684,9 +693,9 @@ def bundle_import(
         
         if clear:
             console.print("[yellow]⚠️  Warning: This will clear all existing graph data![/yellow]")
-            if not typer.confirm("Are you sure you want to continue?", default=False):
+            if not yes and not typer.confirm("Are you sure you want to continue?", default=False):
                 console.print("[yellow]Import cancelled[/yellow]")
-                return
+                raise typer.Exit(code=1)
         
         console.print(f"[cyan]Importing bundle from {bundle_path}...[/cyan]")
         
@@ -1026,6 +1035,26 @@ def doctor():
                 console.print("   [red]✗[/red] LadybugDB core (ladybug) is not installed")
                 console.print("       Run: pip install ladybug")
                 all_checks_passed = False
+        elif default_db == "falkordb-remote":
+            host = os.environ.get("FALKORDB_HOST")
+            if host:
+                port = os.environ.get("FALKORDB_PORT", "6379")
+                console.print(f"   [cyan]Endpoint:[/cyan] {host}:{port}")
+                try:
+                    from codegraphcontext.core.database_falkordb_remote import FalkorDBRemoteManager
+                    ok, msg = FalkorDBRemoteManager.test_connection()
+                    if ok:
+                        console.print("   [green]✓[/green] FalkorDB remote connection successful")
+                    else:
+                        console.print(f"   [red]✗[/red] FalkorDB remote connection failed: {msg}")
+                        all_checks_passed = False
+                except Exception as exc:
+                    console.print(f"   [red]✗[/red] FalkorDB remote check error: {exc}")
+                    all_checks_passed = False
+            else:
+                console.print("   [red]✗[/red] FALKORDB_HOST is not configured")
+                console.print("       Run: cgc config set FALKORDB_HOST 127.0.0.1")
+                all_checks_passed = False
         else:
             # FalkorDB
             try:
@@ -1200,7 +1229,8 @@ def delete(
         # Delete all repositories
         services = _initialize_services(context)
         if not all(services[:3]):
-            return
+            from .cli_helpers import _fail_services_init
+            _fail_services_init()
         db_manager, graph_builder, code_finder = services[:3]
         
         try:
@@ -1435,7 +1465,8 @@ def find_by_name(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
 
     # Resolve effective fuzzy setting: CLI flag wins, else config, else true.
@@ -1557,7 +1588,8 @@ def find_by_pattern(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -1650,7 +1682,8 @@ def find_by_type(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -1705,7 +1738,8 @@ def find_by_variable(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -1751,7 +1785,8 @@ def find_by_content_search(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -1813,7 +1848,8 @@ def find_by_decorator_search(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -1861,7 +1897,8 @@ def find_by_argument_search(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -1917,7 +1954,8 @@ def analyze_calls(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -1973,7 +2011,8 @@ def analyze_callers(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -2034,7 +2073,8 @@ def analyze_chain(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -2104,7 +2144,8 @@ def analyze_kotlin_call_audit(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, _, code_finder = services[:3]
 
     try:
@@ -2164,7 +2205,8 @@ def analyze_dependencies(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -2216,7 +2258,8 @@ def analyze_inheritance_tree(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -2286,7 +2329,8 @@ def analyze_complexity(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
 
     _FILE_EXTENSIONS = ('.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.rs', '.rb',
@@ -2363,7 +2407,8 @@ def analyze_dead_code(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -2417,7 +2462,8 @@ def analyze_overrides(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -2472,7 +2518,8 @@ def analyze_variable_usage(
     _load_credentials()
     services = _initialize_services(context)
     if not all(services[:3]):
-        return
+        from .cli_helpers import _fail_services_init
+        _fail_services_init()
     db_manager, graph_builder, code_finder = services[:3]
     
     try:
@@ -2634,7 +2681,7 @@ def main(
         "--database", 
         "--db",
         "-db", 
-        help="[Global] Temporarily override database backend (falkordb, falkordb-remote, neo4j, or kuzudb) for any command"
+        help="[Global] Temporarily override database backend (falkordb, falkordb-remote, kuzudb, ladybugdb, neo4j, or nornic) for any command"
     ),
     visual: bool = typer.Option(
         False,

@@ -65,9 +65,10 @@ def add_code_to_graph(graph_builder, job_manager, loop, list_repos_func, **args)
 
         if not path_obj.exists():
             return {
-                "success": True,
+                "success": False,
                 "status": "path_not_found",
-                "message": f"Path '{path}' does not exist."
+                "error": f"Path '{path}' does not exist.",
+                "message": f"Path '{path}' does not exist.",
             }
 
         # Prevent re-indexing the same repository.

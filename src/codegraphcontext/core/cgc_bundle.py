@@ -71,12 +71,25 @@ class CGCBundle:
         Returns:
             str: 'elementId' for Neo4j, 'id' for FalkorDB
         """
-        # Check if we're using Neo4j or FalkorDB
         backend = self.db_manager.get_backend_type()
         if backend == 'neo4j':
             return 'elementId'
-        else:  # FalkorDB or other backends
-            return 'id'
+        return 'id'
+
+    def _uses_pk_edge_matching(self) -> bool:
+        """Kùzu/Ladybug internal IDs are not comparable via id() in MATCH."""
+        return self.db_manager.get_backend_type() in {'kuzudb', 'ladybugdb'}
+
+    def _node_lookup_key(self, labels, properties: Dict) -> Optional[tuple]:
+        if not labels:
+            return None
+        if isinstance(labels, str):
+            labels = [labels]
+        primary_label = labels[0]
+        pk_field = self._PK_MAP.get(primary_label)
+        if pk_field and pk_field in properties:
+            return (primary_label, pk_field, properties[pk_field])
+        return None
 
     
     def export_to_bundle(
@@ -914,7 +927,12 @@ cgc import <bundle-file>.cgc
 
             record = result.single()
             if record and old_id:
-                id_mapping[old_id] = record['new_id']
+                if self._uses_pk_edge_matching():
+                    lookup = self._node_lookup_key(labels, properties)
+                    if lookup:
+                        id_mapping[old_id] = lookup
+                else:
+                    id_mapping[old_id] = record['new_id']
         
         return len(batch)
     
@@ -965,14 +983,27 @@ cgc import <bundle-file>.cgc
                 warning_logger(f"Skipping edge: node IDs not found in mapping")
                 continue
             
-            # Create relationship
-            query = f"""
-                MATCH (a), (b)
-                WHERE {id_function}(a) = $from_id AND {id_function}(b) = $to_id
-                CREATE (a)-[r:{rel_type}]->(b)
-                SET r = $props
-            """
-            
-            session.run(query, from_id=new_from, to_id=new_to, props=properties)
+            if self._uses_pk_edge_matching():
+                from_label, from_pk, from_val = new_from
+                to_label, to_pk, to_val = new_to
+                query = f"""
+                    MATCH (a:{from_label} {{{from_pk}: $from_val}}), (b:{to_label} {{{to_pk}: $to_val}})
+                    CREATE (a)-[r:{rel_type}]->(b)
+                    SET r = $props
+                """
+                session.run(
+                    query,
+                    from_val=from_val,
+                    to_val=to_val,
+                    props=properties,
+                )
+            else:
+                query = f"""
+                    MATCH (a), (b)
+                    WHERE {id_function}(a) = $from_id AND {id_function}(b) = $to_id
+                    CREATE (a)-[r:{rel_type}]->(b)
+                    SET r = $props
+                """
+                session.run(query, from_id=new_from, to_id=new_to, props=properties)
         
         return len(batch)
