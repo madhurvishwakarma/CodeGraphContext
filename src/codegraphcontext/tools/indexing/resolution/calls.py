@@ -1376,9 +1376,10 @@ def resolve_function_call(
             return None
     confidence = _TIER_CONFIDENCE.get(resolution_tier, 0.1)
     conf_label = _confidence_label(resolution_tier, is_unresolved_external)
-    # Normalize for DB path consistency (Windows: \ → /)
-    if resolved_path:
-        resolved_path = Path(resolved_path).resolve().as_posix()
+
+    # Normalize resolved_path before storing it (Windows compatibility)
+    if isinstance(resolved_path, str):
+        resolved_path = Path(resolved_path).as_posix()
 
     caller_context = call.get("context")
     if caller_context and len(caller_context) == 3 and caller_context[0] is not None:
@@ -2584,6 +2585,13 @@ def build_function_call_groups(
     file_to_object: List[Dict[str, Any]] = []
 
     for edge in resolved_calls:
+        # Normalize paths for DB consistency (Windows: backslash → forward slash)
+        caller_fp = edge.get("caller_file_path")
+        if caller_fp:
+            edge["caller_file_path"] = Path(caller_fp).resolve().as_posix()
+        called_fp = edge.get("called_file_path")
+        if called_fp:
+            edge["called_file_path"] = Path(called_fp).resolve().as_posix()
         called_path = Path(edge.get("called_file_path", "")).resolve().as_posix()
         called_name = edge.get("called_name")
         target_label = file_symbol_labels.get(called_path, {}).get(called_name)

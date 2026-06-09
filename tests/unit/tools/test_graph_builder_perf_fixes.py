@@ -381,7 +381,7 @@ class TestCreateAllFunctionCallsV3:
         with patch("codegraphcontext.tools.indexing.resolution.calls.get_config_value",
                    return_value="false"):
             gb._create_all_function_calls(file_data, {}, external_lookup)
-        resolved_b = str(Path("/repo/b.py").resolve())
+        resolved_b = Path("/repo/b.py").resolve().as_posix()
         assert resolved_b in external_lookup
         assert "MyClass" in external_lookup[resolved_b]
 
